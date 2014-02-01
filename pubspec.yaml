@@ -1,0 +1,7 @@
+name: furniture
+version: 0.0.1
+description: Furniture organizer app
+author: T. Jameson Little <beatgammit@gmail.com>
+dependencies:
+    browser: any
+transformers:

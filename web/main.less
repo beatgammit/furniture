@@ -1,0 +1,25 @@
+body {
+	padding: 0;
+	overflow: hidden;
+	margin: 0;
+}
+
+canvas {
+	padding: 0;
+
+    &.hover {
+        cursor: move;
+    }
+
+    &.hover-edge-vert {
+      cursor: col-resize;
+    }
+
+    &.hover-edge-horiz {
+      cursor: row-resize;
+    }
+
+    &.hover-point {
+      cursor: pointer;
+    }
+}

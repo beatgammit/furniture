@@ -1,0 +1,7 @@
+packages
+build/
+pubspec.lock
+.buildlog
+
+# editor files
+*.swp
