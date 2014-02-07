@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" width="100px" height="100px" viewBox="0 0 100 100" enable-background="new 0 0 100 100" xml:space="preserve">
+<g id="Your_Icon" display="none">
+	<rect x="2" y="17" display="inline" width="68" height="14"/>
+	<polygon display="inline" points="88,42 20,42 2,35 70,35  "/>
+</g>
+<g id="Layer_3">
+	<rect x="9" y="29" width="68" height="16"/>
+	<g>
+		<polygon points="27,70 27,56 31,56   "/>
+		<polygon points="27,70 27,56 23,54   "/>
+	</g>
+	<polygon points="9,63 9,49 13,51  "/>
+	<polygon points="90,56 95,56 95,70  "/>
+	<rect x="27" y="54" width="68" height="3"/>
+	<polygon points="27,57 9,50 9,47 27,54  "/>
+	<polygon points="95,54 27,54 9,47 77,47  "/>
+</g>
+<g id="Layer_2" display="none">
+	<rect x="2" y="17" display="inline" fill="#000000" width="68" height="4"/>
+	<rect x="2" y="22" display="inline" fill="#000000" width="68" height="4"/>
+	<rect x="2" y="27" display="inline" fill="#000000" width="68" height="4"/>
+	<rect x="15" y="15" display="inline" fill="#000000" width="2" height="20"/>
+	<rect x="23" y="44" display="inline" fill="#000000" width="2" height="15"/>
+	<rect x="5" y="37" display="inline" fill="#000000" width="2" height="15"/>
+	<rect x="65" y="37" display="inline" fill="#000000" width="2" height="15"/>
+	<rect x="82" y="44" display="inline" fill="#000000" width="2" height="15"/>
+	<rect x="53" y="15" display="inline" fill="#000000" width="2" height="20"/>
+	<rect x="20" y="42" display="inline" fill="#000000" width="68" height="2"/>
+	<polygon display="inline" fill="#000000" points="20,44 2,37 2,35 20,42  "/>
+	<polygon display="inline" fill="#000000" points="88,42 20,42 2,35 70,35  "/>
+</g>
+</svg>

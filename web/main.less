@@ -4,6 +4,10 @@ body {
 	margin: 0;
 }
 
+.hidden {
+	display: none;
+}
+
 canvas {
 	padding: 0;
 
@@ -22,4 +26,81 @@ canvas {
     &.hover-point {
       cursor: pointer;
     }
+}
+
+.center-horizontally(@width, @position: fixed) {
+	position: @position;
+	width: @width;
+	margin-left: -@width / 2;
+	left: 50%;
+}
+
+.center-vertically(@height, @position: fixed) {
+	position: @position;
+	height: @height;
+	top: 50%;
+	margin-top: -@height / 2;
+}
+
+.modal() {
+	border: 2px solid black;
+	border-radius: 10px;
+	background-color: lightgray;
+
+	* {
+		margin: 10px;
+	}
+
+	label[for] {
+		margin: auto;
+	}
+
+}
+
+#setup {
+	.center-horizontally(300px);
+	.center-vertically(300px);
+	.modal();
+
+	button.close {
+		position: absolute;
+		right: 0px;
+		bottom: 0px;
+	}
+}
+
+#toolbar {
+	.center-horizontally(160px);
+	bottom: 0px;
+
+	background-color: white;
+	border: 2px solid black;
+	border-radius: 10px;
+
+	display: table;
+
+	& > div {
+		display: table-cell;
+		height: 50px;
+		width: 50px;
+		vertical-align: middle;
+		cursor: pointer;
+
+		border-radius: 10px;
+
+		&:hover {
+			background-color: lightblue;
+		}
+
+		img {
+			height: 50px;
+			width: 50px;
+		}
+	}
+}
+
+#create-room-prompt {
+	.center-horizontally(300px);
+	.center-vertically(150px);
+	.modal();
 }

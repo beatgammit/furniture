@@ -1,9 +1,40 @@
 doctype
 html
 	head
-		title Room-Organizer
+		title Room Organizer
 		link(rel='stylesheet', type='text/css', href='main.css')
 		script(type='application/dart', src='main.dart')
 		script(type='text/javascript', src='packages/browser/dart.js')
 	body
 		canvas
+		#setup.hidden
+			h1 Welcome!
+
+			p It looks like you're new here, so let's run through the basics.
+
+			p There's a toolbar at the bottom of your screen. The icons are:
+
+			ul
+				li Create a new room
+				li Add furniture
+				//li Settings
+				li Help
+
+			p That's it, have fun!
+
+			button.close Start
+
+		#create-room-prompt.hidden
+			p Enter a name for your new room:
+			input.name(type='text')
+			br
+			button.ok OK
+			button.cancel Cancel
+
+		#toolbar
+			.create-room
+				img(alt='Create Room', title='Create Room', src='icons/room.svg')
+			.add-furniture
+				img(alt='Add Furniture', title='Add Furniture', src='icons/furniture.svg')
+			.help
+				img(alt='Help', title='Help', src='icons/help.svg')

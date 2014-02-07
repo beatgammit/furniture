@@ -6,7 +6,12 @@ Room r;
 Grid gr;
 var lastLoop = new DateTime.now();
 
+// TODO: scope this?
+var mmStream, mdStream;
+
 const tolerance = 10;
+
+bool dragging = false;
 
 class Color {
   final int r, g, b;
@@ -37,7 +42,7 @@ class Point {
 
   Point(this._x, this._y);
 
-  Point.fromEvent(ev) : this(ev.page.x, ev.page.y);
+  Point.fromPoint(p) : this(p.x, p.y);
 
   // returns true if a ray from the left of the line to this point
   // intersects the line between these points
@@ -241,6 +246,7 @@ class Polygon {
 
   void save() {
     this._lockEdge = null;
+
     this.points.forEach((p) => p.save());
   }
 
@@ -293,10 +299,68 @@ class Furniture extends Polygon {
 }
 
 class Room extends Polygon {
+  String name;
+  Point tmpPoint;
   List<Furniture> furniture = [];
 
-  Room(points, {Color stroke: Color.BLACK, Color fill: Color.TRANSPARENT}) : super(points, stroke: stroke, fill: fill);
-  Room.rect(int x, y, w, h, {Color stroke: Color.BLACK, Color fill: Color.TRANSPARENT}) : super.rect(x, y, w, h, stroke: stroke, fill: fill);
+  Room(this.name, points, {Color stroke: Color.BLACK, Color fill: Color.TRANSPARENT}) : super(points, stroke: stroke, fill: fill);
+  Room.rect(this.name, int x, y, w, h, {Color stroke: Color.BLACK, Color fill: Color.TRANSPARENT}) : super.rect(x, y, w, h, stroke: stroke, fill: fill);
+  Room.temp(this.name, {Color stroke: Color.BLACK, Color fill: Color.TRANSPARENT}) : super([], stroke: stroke, fill: fill) {
+    this.tmpPoint = new Point(0, 0);
+  }
+
+  void draw(g) {
+    if (tmpPoint == null) {
+      super.draw(g);
+      return;
+    }
+
+    if (points.length == 0)
+      return;
+
+    g.strokeStyle = 'black';
+    g.moveTo(points[0].x, points[0].y);
+    points.sublist(1).forEach((p) => g.lineTo(p.x, p.y));
+    g.lineTo(tmpPoint.x, tmpPoint.y);
+    g.stroke();
+  }
+
+  // prevent illegal figures that could result in diagonal lines
+  bool fixup() {
+    if (this.tmpPoint != null) {
+      this.tmpPoint = null;
+      this.points[this.points.length - 1] = this.lock(this.points.last, compareTo: points.first);
+    }
+
+    bool lastWasVert = this.isVertEdge(0);
+    for (int i = 1; i < points.length; i++) {
+      print("$i : $lastWasVert : ${this.isVertEdge(i)}");
+      if (this.isVertEdge(i) == lastWasVert) {
+        points.removeAt(i);
+        i--;
+      } else {
+        lastWasVert = !lastWasVert;
+      }
+    }
+
+    if (this.isVertEdge(0) == this.isVertEdge(points.length - 1))
+      points.removeAt(0);
+
+    return points.length >= 4;
+  }
+
+  Point lock(Point p, {Point compareTo}) {
+    if (points.isEmpty)
+      return p;
+
+    if (compareTo == null)
+      compareTo = points.last;
+
+    num diffX = (compareTo.x - p.x).abs();
+    num diffY = (compareTo.y - p.y).abs();
+
+    return diffX < diffY ? new Point(compareTo.x, p.y) : new Point(p.x, compareTo.y);
+  }
 }
 
 class Grid {
@@ -349,11 +413,12 @@ void fillScreen(el) {
 }
 
 void redraw(i) {
-  var g = (query('canvas') as CanvasElement).getContext('2d');
+  var g = (querySelector('canvas') as CanvasElement).getContext('2d');
 
   g.clearRect(0, 0, g.canvas.width, g.canvas.height);
   gr.draw(g);
-  r.draw(g);
+  if (r != null)
+    r.draw(g);
 
   /*
   var thisLoop = new DateTime.now();
@@ -377,19 +442,12 @@ Point movement(ev) {
     return new Point(evnt['mozMovementX'], evnt['mozMovementY']);
 }
 
-void main() {
-  bool dragging = false;
-
-  r = new Room.rect(10, 10, 50, 50);
-  gr = new Grid();
-  querySelectorAll('canvas').forEach(fillScreen);
-  window.onResize.listen((ev) => querySelectorAll('canvas').forEach(fillScreen));
-
-  window.onMouseMove.listen((ev) {
+void newRoom() {
+  mmStream = window.onMouseMove.listen((ev) {
       if (dragging)
         return;
 
-      Point p = new Point.fromEvent(ev);
+      Point p = new Point.fromPoint(ev.page);
 
       // TODO: diagonal drag
       /*
@@ -424,13 +482,14 @@ void main() {
         return;
       }
 
-      bool hover = r.contains(p);
-      if (r.selected != hover) {
-        r.selected = hover;
-        querySelector('canvas').classes.toggle('hover');
+      r.selected = r.contains(p);
+      if (r.selected) {
+        querySelector('canvas').classes.add('hover');
+      } else {
+        querySelector('canvas').classes.remove('hover');
       }
     });
-  window.onMouseDown.listen((ev) {
+  mdStream = window.onMouseDown.listen((ev) {
     var sub;
 
     /*if (r.selectedPoint != null) {
@@ -452,6 +511,55 @@ void main() {
       dragging = false;
     });
   });
+}
+
+void main() {
+  if (window.localStorage.isEmpty) {
+    querySelector('#setup').classes.remove('hidden');
+    querySelector('#setup .close').onClick.listen((ev) => querySelector('#setup').classes.add('hidden'));
+  }
+
+  bool creatingRoom = false;
+
+  querySelector('#toolbar .create-room').onClick.listen((ev) {
+      querySelector('#create-room-prompt').classes.remove('hidden');
+    });
+
+  querySelector('#toolbar .help').onClick.listen((ev) => querySelector('#setup').classes.remove('hidden'));
+
+  querySelector('#create-room-prompt .ok').onClick.listen((ev) {
+      String name = (querySelector('#create-room-prompt .name') as InputElement).value;
+      if (name == "") {
+        // nice try
+        return;
+      }
+
+      // TODO: create new room
+      querySelector('#create-room-prompt').classes.add('hidden');
+
+      if (mmStream != null)
+        mmStream.cancel();
+      if (mdStream != null)
+        mdStream.cancel();
+
+      r = new Room.temp(name);
+      var lStream = querySelector('canvas').onMouseMove.listen((ev) {
+          r.tmpPoint = r.lock(new Point.fromPoint(ev.page));
+        });
+      querySelector('canvas').onMouseDown
+        .takeWhile((ev) => r.points.isEmpty || r.points.first.distanceTo(ev.page) > tolerance)
+        .listen((ev) => r.points.add(r.tmpPoint), onDone: () {
+            lStream.cancel();
+            r.fixup();
+            newRoom();
+          });
+    });
+  querySelector('#create-room-prompt .cancel').onClick.listen((ev) => querySelector('#create-room-prompt').classes.add('hidden'));
+
+  //r = new Room.rect(10, 10, 50, 50);
+  gr = new Grid();
+  querySelectorAll('canvas').forEach(fillScreen);
+  window.onResize.listen((ev) => querySelectorAll('canvas').forEach(fillScreen));
 
   redraw(null);
 }
