@@ -255,10 +255,13 @@ class Polygon {
 
   void reset() {
     this.selected = false;
+    this.selectedEdge = null;
+    this.selectedPoint = null;
     querySelector('canvas').classes.removeWhere((c) => c.startsWith('hover-'));
   }
 
   void draw(g) {
+    g.save();
     g.fillStyle = fill.rgba;
     g.strokeStyle = stroke.rgba;
 
@@ -291,11 +294,14 @@ class Polygon {
       g.lineWidth = 3;
       g.stroke();
     }
+    g.restore();
   }
 }
 
 class Furniture extends Polygon {
-  Furniture(points, {Color stroke, Color fill}) : super(points, stroke: stroke, fill: fill);
+  String name;
+  Furniture(this.name, points, {Color stroke: Color.RED, Color fill: Color.BLUE}) : super(points, stroke: stroke, fill: fill);
+  Furniture.rect(this.name, int x, y, w, h, {Color stroke: Color.RED, Color fill: Color.BLUE}) : super.rect(x, y, w, h, stroke: stroke, fill: fill);
 }
 
 class Room extends Polygon {
@@ -312,17 +318,20 @@ class Room extends Polygon {
   void draw(g) {
     if (tmpPoint == null) {
       super.draw(g);
+      furniture.forEach((f) => f.draw(g));
       return;
     }
 
     if (points.length == 0)
       return;
 
+    g.save();
     g.strokeStyle = 'black';
     g.moveTo(points[0].x, points[0].y);
     points.sublist(1).forEach((p) => g.lineTo(p.x, p.y));
     g.lineTo(tmpPoint.x, tmpPoint.y);
     g.stroke();
+    g.restore();
   }
 
   // prevent illegal figures that could result in diagonal lines
@@ -387,6 +396,7 @@ class Grid {
   nearestY(int y) => _nearest(y, offset.y);
 
   draw(g) {
+    g.save();
     g.strokeStyle = 'rgba(0, 0, 0, 0.25)';
     g.lineWidth = 1;
     for (int x = offset.x; x < g.canvas.width; x += pixelsPerMeter*metersPerLine) {
@@ -404,6 +414,7 @@ class Grid {
       g.closePath();
       g.stroke();
     }
+    g.restore();
   }
 }
 
@@ -420,17 +431,6 @@ void redraw(i) {
   if (r != null)
     r.draw(g);
 
-  /*
-  var thisLoop = new DateTime.now();
-  var fps = 1000 / thisLoop.difference(lastLoop).inMilliseconds;
-  if (fps.isFinite) {
-    g.font = '14pt sans';
-    g.fillStyle = Color.BLACK.rgba;
-    g.fillText('FPS: ${fps.round()}', g.canvas.width / 2, g.canvas.height / 2);
-  }
-  lastLoop = thisLoop;
-  */
-
   window.animationFrame.then(redraw);
 }
 
@@ -443,11 +443,19 @@ Point movement(ev) {
 }
 
 void newRoom() {
+  var sel;
+
   mmStream = window.onMouseMove.listen((ev) {
       if (dragging)
         return;
 
       Point p = new Point.fromPoint(ev.page);
+
+      if (sel != null) {
+        sel.reset();
+      }
+      Furniture f = r.furniture.firstWhere((f) => f.contains(p) || f.onEdge(p) != null, orElse: () => null);
+      sel = (f != null) ? f : r;
 
       // TODO: diagonal drag
       /*
@@ -463,12 +471,12 @@ void newRoom() {
       }
       */
 
-      int i = r.onEdge(p);
+      int i = sel.onEdge(p);
       if (i != null) {
-        if (r.isVertEdge(i)) {
+        if (sel.isVertEdge(i)) {
           querySelector('canvas').classes.add('hover-edge-vert');
           querySelector('canvas').classes.remove('hover-edge-horiz');
-        } else if (r.isHorizEdge(i)) {
+        } else if (sel.isHorizEdge(i)) {
           querySelector('canvas').classes.add('hover-edge-horiz');
           querySelector('canvas').classes.remove('hover-edge-vert');
         }
@@ -476,29 +484,36 @@ void newRoom() {
         querySelector('canvas').classes.remove('hover-edge-horiz');
         querySelector('canvas').classes.remove('hover-edge-vert');
       }
-      r.selectedEdge = i;
+      sel.selectedEdge = i;
       if (i != null) {
-        r.selected = false;
+        sel.selected = false;
         return;
       }
 
-      r.selected = r.contains(p);
-      if (r.selected) {
-        querySelector('canvas').classes.add('hover');
+      if (f != null) {
+        sel.selected = sel.contains(p);
+        if (sel.selected) {
+          querySelector('canvas').classes.add('hover');
+        } else {
+          querySelector('canvas').classes.remove('hover');
+        }
       } else {
-        querySelector('canvas').classes.remove('hover');
+          querySelector('canvas').classes.remove('hover');
       }
     });
   mdStream = window.onMouseDown.listen((ev) {
     var sub;
 
+    if (sel == null)
+      return;
+
     /*if (r.selectedPoint != null) {
       sub = window.onMouseMove.listen((ev) => r.points[r.selectedPoint].offset(movement(ev).x, movement(ev).y));
     } else */
-    if (r.selectedEdge != null) {
-      sub = window.onMouseMove.listen((ev) => r.offsetEdge(r.selectedEdge, movement(ev).x, movement(ev).y, ev.ctrlKey));
-    } else if (r.selected) {
-      sub = window.onMouseMove.listen((ev) => r.offset(movement(ev).x, movement(ev).y, ev.ctrlKey));
+    if (sel.selectedEdge != null) {
+      sub = window.onMouseMove.listen((ev) => sel.offsetEdge(sel.selectedEdge, movement(ev).x, movement(ev).y, ev.ctrlKey));
+    } else if (sel.selected) {
+      sub = window.onMouseMove.listen((ev) => sel.offset(movement(ev).x, movement(ev).y, ev.ctrlKey));
     } else {
       return;
     }
@@ -506,7 +521,7 @@ void newRoom() {
     dragging = true;
 
     window.onMouseUp.take(1).forEach((ev) {
-      r.save();
+      sel.save();
       sub.cancel();
       dragging = false;
     });
@@ -523,6 +538,13 @@ void main() {
 
   querySelector('#toolbar .create-room').onClick.listen((ev) {
       querySelector('#create-room-prompt').classes.remove('hidden');
+    });
+  querySelector('#toolbar .add-furniture').onClick.listen((ev) {
+      // TODO: warn about adding furniture without a room
+      if (r == null)
+        return;
+
+      querySelector('#create-furniture-prompt').classes.remove('hidden');
     });
 
   querySelector('#toolbar .help').onClick.listen((ev) => querySelector('#setup').classes.remove('hidden'));
@@ -555,6 +577,18 @@ void main() {
           });
     });
   querySelector('#create-room-prompt .cancel').onClick.listen((ev) => querySelector('#create-room-prompt').classes.add('hidden'));
+
+  querySelectorAll('#create-furniture-prompt .ok').onClick.listen((ev) {
+      String name = (querySelector('#create-furniture-prompt .name') as InputElement).value;
+      if (name == "")
+        // nice try
+        return;
+
+      r.furniture.add(new Furniture.rect(name, 10, 10, 50, 50));
+
+      querySelector('#create-furniture-prompt').classes.add('hidden');
+    });
+  querySelectorAll('#create-furniture-prompt .cancel').onClick.listen((ev) => querySelector('#create-furniture-prompt').classes.add('hidden'));
 
   //r = new Room.rect(10, 10, 50, 50);
   gr = new Grid();
