@@ -591,9 +591,12 @@ void main() {
 
             bool isVert = r.isVertEdge(i);
             if (r.isVertEdge(i)) {
+              if (r.tmpPoint.y > max(a.y, b.y) || r.tmpPoint.y < min(a.y, b.y))
+                continue;
+
               if (tmpIsVert) {
                 // line overlaps another vertical line
-                if (r.tmpPoint.x == r.points[i].x && r.tmpPoint.y <= max(a.y, b.y) && r.tmpPoint.y >= min(a.y, b.y)) {
+                if (r.tmpPoint.x == r.points[i].x) {
                   r.tmpInvalid = true;
                   break;
                 }
@@ -602,9 +605,12 @@ void main() {
                 break;
               }
             } else if (r.isHorizEdge(i)) {
+              if (r.tmpPoint.x > max(a.x, b.x) || r.tmpPoint.x < min(a.x, b.x))
+                  continue;
+
               if (!tmpIsVert) {
                 // line overlaps another horizontal line
-                if (r.tmpPoint.y == r.points[i].y && r.tmpPoint.x <= max(a.x, b.x) && r.tmpPoint.x >= min(a.x, b.x)) {
+                if (r.tmpPoint.y == r.points[i].y) {
                   r.tmpInvalid = true;
                   break;
                 }
