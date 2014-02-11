@@ -146,11 +146,11 @@ class Polygon {
   // uses ray-casting algorithm
   bool contains(Point p) {
     num crosses = 0;
-    for (int i = 0; i < points.length; i++) {
-      int second = (i + 1) % points.length;
+    for (int i = 0; i < this.points.length; i++) {
+      int second = (i + 1) % this.points.length;
 
-      Point a = points[i];
-      Point b = points[second];
+      Point a = this.points[i];
+      Point b = this.points[second];
 
       if (p.intersects(a, b)) {
         crosses++;
@@ -163,11 +163,11 @@ class Polygon {
   int onEdge(Point p) {
     int best;
     num bestDistance = double.INFINITY;
-    for (int i = 0; i < points.length; i++) {
-      int second = (i + 1) % points.length;
+    for (int i = 0; i < this.points.length; i++) {
+      int second = (i + 1) % this.points.length;
 
-      Point a = points[i];
-      Point b = points[second];
+      Point a = this.points[i];
+      Point b = this.points[second];
 
       num dist;
       if (a.x == b.x) {
@@ -199,7 +199,7 @@ class Polygon {
   int onPoint(Point p) {
     int best;
     num bestDistance = double.INFINITY;
-    for (int i = 0; i < points.length; i++) {
+    for (int i = 0; i < this.points.length; i++) {
       num dist = p.distanceTo(points[i]);
       if (dist < bestDistance) {
         best = i;
@@ -214,9 +214,9 @@ class Polygon {
   void offset(int x, int y, [bool lock]) => this.points.forEach((p) => p.offset(x, y));
 
   void offsetEdge(int edge, int x, int y, [bool lock]) {
-    int next = (edge + 1) % points.length;
-    Point a = points[edge];
-    Point b = points[next];
+    int next = (edge + 1) % this.points.length;
+    Point a = this.points[edge];
+    Point b = this.points[next];
 
     if (edge != this._lockEdge && this._lockEdge != null) {
       // unlock old points
@@ -266,8 +266,8 @@ class Polygon {
     g.strokeStyle = stroke.rgba;
 
     g.beginPath();
-    g.moveTo(points[0].x, points[0].y);
-    points.sublist(1).forEach((p) => g.lineTo(p.x, p.y));
+    g.moveTo(points[0].x, this.points[0].y);
+    this.points.sublist(1).forEach((p) => g.lineTo(p.x, p.y));
     g.closePath();
 
     g.fill();
@@ -277,7 +277,7 @@ class Polygon {
     g.stroke();
 
     if (selectedPoint != null) {
-      Point p = points[selectedPoint];
+      Point p = this.points[selectedPoint];
       g.beginPath();
       g.arc(p.x, p.y, tolerance, 0, PI*2);
       g.closePath();
@@ -286,10 +286,10 @@ class Polygon {
     }
 
     if (selectedEdge != null) {
-      int next = (selectedEdge+1) % points.length;
+      int next = (selectedEdge+1) % this.points.length;
       g.beginPath();
-      g.moveTo(points[selectedEdge].x, points[selectedEdge].y);
-      g.lineTo(points[next].x, points[next].y);
+      g.moveTo(points[selectedEdge].x, this.points[selectedEdge].y);
+      g.lineTo(points[next].x, this.points[next].y);
       g.closePath();
       g.lineWidth = 3;
       g.stroke();
@@ -307,6 +307,7 @@ class Furniture extends Polygon {
 class Room extends Polygon {
   String name;
   Point tmpPoint;
+  bool tmpInvalid = false;
   List<Furniture> furniture = [];
 
   Room(this.name, points, {Color stroke: Color.BLACK, Color fill: Color.TRANSPARENT}) : super(points, stroke: stroke, fill: fill);
@@ -326,7 +327,8 @@ class Room extends Polygon {
       return;
 
     g.save();
-    g.strokeStyle = 'black';
+    g.strokeStyle = tmpInvalid ? 'red' : 'black';
+    g.beginPath();
     g.moveTo(points[0].x, points[0].y);
     points.sublist(1).forEach((p) => g.lineTo(p.x, p.y));
     g.lineTo(tmpPoint.x, tmpPoint.y);
@@ -338,14 +340,14 @@ class Room extends Polygon {
   bool fixup() {
     if (this.tmpPoint != null) {
       this.tmpPoint = null;
-      this.points[this.points.length - 1] = this.lock(this.points.last, compareTo: points.first);
+      this.points[this.points.length - 1] = this.lock(this.points.last, compareTo: this.points.first);
     }
 
     bool lastWasVert = this.isVertEdge(0);
-    for (int i = 1; i < points.length; i++) {
+    for (int i = 1; i < this.points.length; i++) {
       print("$i : $lastWasVert : ${this.isVertEdge(i)}");
       if (this.isVertEdge(i) == lastWasVert) {
-        points.removeAt(i);
+        this.points.removeAt(i);
         i--;
       } else {
         lastWasVert = !lastWasVert;
@@ -353,9 +355,9 @@ class Room extends Polygon {
     }
 
     if (this.isVertEdge(0) == this.isVertEdge(points.length - 1))
-      points.removeAt(0);
+      this.points.removeAt(0);
 
-    return points.length >= 4;
+    return this.points.length >= 4;
   }
 
   Point lock(Point p, {Point compareTo}) {
@@ -363,7 +365,7 @@ class Room extends Polygon {
       return p;
 
     if (compareTo == null)
-      compareTo = points.last;
+      compareTo = this.points.last;
 
     num diffX = (compareTo.x - p.x).abs();
     num diffY = (compareTo.y - p.y).abs();
@@ -567,10 +569,58 @@ void main() {
       r = new Room.temp(name);
       var lStream = querySelector('canvas').onMouseMove.listen((ev) {
           r.tmpPoint = r.lock(new Point.fromPoint(ev.page));
+
+          // can't have overlapping lines
+          if (r.points.length < 2)
+            return;
+
+          // don't allow overlapping lines
+          var last = r.points.last;
+
+          bool tmpIsVert = (r.tmpPoint.x == r.points.last.x);
+          r.tmpInvalid = (r.isVertEdge(r.points.length - 2) == tmpIsVert);
+
+          // don't allow the new line to go the same direction as the last
+          if (r.tmpInvalid)
+            return;
+
+          // check all edges up-to, but not including, the last edge
+          for (int i = 0; i < r.points.length - 2; i++) {
+            Point a = r.points[i];
+            Point b = r.points[i + 1];
+
+            bool isVert = r.isVertEdge(i);
+            if (r.isVertEdge(i)) {
+              if (tmpIsVert) {
+                // line overlaps another vertical line
+                if (r.tmpPoint.x == r.points[i].x && r.tmpPoint.y <= max(a.y, b.y) && r.tmpPoint.y >= min(a.y, b.y)) {
+                  r.tmpInvalid = true;
+                  break;
+                }
+              } else if ((r.tmpPoint.x < r.points[i].x) == (last.x > r.points[i].x)) {
+                r.tmpInvalid = true;
+                break;
+              }
+            } else if (r.isHorizEdge(i)) {
+              if (!tmpIsVert) {
+                // line overlaps another horizontal line
+                if (r.tmpPoint.y == r.points[i].y && r.tmpPoint.x <= max(a.x, b.x) && r.tmpPoint.x >= min(a.x, b.x)) {
+                  r.tmpInvalid = true;
+                  break;
+                }
+              } else if ((r.tmpPoint.y < r.points[i].y) == (last.y > r.points[i].y)) {
+                r.tmpInvalid = true;
+                break;
+              }
+            } else {
+              // TODO: allow diagonal lines
+              print("Invalid edge");
+            }
+          }
         });
       querySelector('canvas').onMouseDown
         .takeWhile((ev) => r.points.isEmpty || r.points.first.distanceTo(ev.page) > tolerance)
-        .listen((ev) => r.points.add(r.tmpPoint), onDone: () {
+        .listen((ev) { if (!r.tmpInvalid) r.points.add(r.tmpPoint); }, onDone: () {
             lStream.cancel();
             r.fixup();
             newRoom();
